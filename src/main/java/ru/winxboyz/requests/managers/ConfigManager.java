@@ -28,10 +28,10 @@ public class ConfigManager {
         localeSection  = plugin.getConfig().getConfigurationSection("locales." + plugin.getLocale());
         questsSection  = plugin.getConfig().getConfigurationSection("quests");
 
-        if(sqlSection == null) {
-            plugin.getLogger().severe("No SQL connection credentials specified");
-            return;
-        }
+        // if(sqlSection == null) {
+        //     plugin.getLogger().severe("No SQL connection credentials specified");
+        //     return;
+        // }
 
         if(questsSection == null) {
             plugin.getLogger().warning("No quests specified in config, creating default quests");
@@ -70,7 +70,6 @@ public class ConfigManager {
             Set<String> keys = questsSection.getKeys(false);
             for(String key : keys) {
                 String
-                    name = questsSection.getString(key + ".name"),
                     displayName = questsSection.getString(key + ".display-name"),
                     description = questsSection.getString(key + ".description"),
                     npc = questsSection.getString(key + ".npc");
@@ -89,7 +88,7 @@ public class ConfigManager {
                     int amount = questsSection.getInt(key + ".rewards." + i + ".amount");
                     return new QuestReward(RewardType.valueOf(type), identifier, amount);
                 }).toList();
-                plugin.getQuests().add(new QuestData(name, displayName, description, npc, objectives, rewards, duration, cooldown));
+                plugin.getQuests().add(new QuestData(key, displayName, description, npc, objectives, rewards, duration, cooldown));
             }
         }
 

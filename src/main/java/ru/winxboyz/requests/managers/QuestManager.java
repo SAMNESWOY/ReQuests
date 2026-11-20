@@ -30,6 +30,11 @@ public class QuestManager {
     public boolean isNpcQuestGiver(String npcId) {
         return quests.stream().anyMatch(q -> q.getNpc().equals(npcId));
     }
+
+    public QuestData getQuest(String npcId) {
+        return quests.stream().filter(q -> q.getNpc().equals(npcId)).findFirst().orElse(null);
+    }
+
     public void openQuest(Player player, String npcId) {
         if(isNpcQuestGiver(npcId)) {
             QuestData quest = quests.stream().filter(q -> q.getNpc().equals(npcId)).findFirst().get();
@@ -38,46 +43,24 @@ public class QuestManager {
     }
 
     public boolean hasQuests(Player player) {
-        return progress.keySet().contains(player.getUniqueId());
+        return progress.keySet().contains(player.getUniqueId()) &&
+        progress.get(player.getUniqueId()).size() > 0;
     }
 
     public boolean hasQuestFrom(Player player, String npcId) {
-        return progress.get(player.getUniqueId()).stream().filter(t -> t.getQuest().getNpc().equals(npcId)).findFirst().orElse(null) != null;
+        return progress.get(player.getUniqueId()).stream().anyMatch(t -> t.getQuest().getNpc().equals(npcId));
     }
 
-    public  boolean npcHasObjectiveOf(String npc, ObjectiveType type) {
-        return quests.stream().anyMatch(q -> q.getNpc().equals(npc) && q.getObjectives().stream().anyMatch(obj -> obj.getType() == type));
+    public boolean hasObjective(QuestData quest, ObjectiveType type) {
+        return quest.getObjectives().stream().anyMatch(obj -> obj.getType() == type);
     }
 
-    public boolean hasObjectiveOf(Player player, ObjectiveType type) {
-        return progress.get(player.getUniqueId())
-        .stream().anyMatch(t -> 
-            t.getQuest().getObjectives().stream().anyMatch(obj -> obj.getType() == type));
-    }
-
-    public boolean hasParamsOf(Player player, ObjectiveType type, String target) {
-        return progress.get(player.getUniqueId())
-        .stream().anyMatch(t -> 
-            t.getQuest().queryObjective(type, target) != null);
-    }
-
-    public Tracker questOfTypeAndTarget(Player player, ObjectiveType type, String target) {
-        return progress.get(player.getUniqueId())
-        .stream().filter(t -> 
-            t.getQuest().getObjectives()
-            .stream().anyMatch(obj -> obj.getType() == type && obj.getTarget().equals(target))).findFirst().get();
-    }
-
-    public QuestObjective getObjective(Tracker tracker, ObjectiveType type, String target) {
-        return tracker.getQuest().queryObjective(type, target);
+    public boolean hasObjective(String npc, ObjectiveType type) {
+        return getQuest(npc).getObjectives().stream().anyMatch(obj -> obj.getType() == type);
     }
 
     public int objectiveIndex(Tracker tracker, QuestObjective objective) {
         return tracker.getQuest().getObjectives().indexOf(objective);
-    }
-
-    public QuestData getQuest(String npcId) {
-        return quests.stream().filter(q -> q.getNpc().equals(npcId)).findFirst().orElse(null);
     }
 
     public ItemStack getItems(String npcId, ObjectiveType type) {
@@ -89,54 +72,45 @@ public class QuestManager {
     }
 
     public void trackCraft(Player player, ItemStack items) {
-        if(
-            hasQuests(player) &&
-            hasParamsOf(player, ObjectiveType.CRAFT, items.getType().name())
-        ) {
-            Tracker tracker = questOfTypeAndTarget(player, ObjectiveType.CRAFT, items.getType().name());
-            QuestObjective objective = getObjective(tracker, ObjectiveType.CRAFT, items.getType().name());
-
-            if(objective == null) return;
+        if(!hasQuests(player)) return;
+        for(Tracker tracker : progress.get(player.getUniqueId())) {
+            List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.CRAFT, items.getType());
+            if(objectives.size() == 0) continue;
 
             int[] tracks = tracker.getProgress();
-            int index = objectiveIndex(tracker, objective);
-
-            if(objective.getAmount() <= tracks[index]) return;
-
-            tracks[index] += items.getAmount();
-
-            if(objective.getAmount() <= tracks[index])
-                checkCompletion(player, tracker);
+            for(QuestObjective objective : objectives) {
+                int index = objectiveIndex(tracker, objective);
+                if(objective.getAmount() <= tracks[index]) return;
+                tracks[index] += items.getAmount();
+                if(objective.getAmount() <= tracks[index])
+                    checkCompletion(player, tracker);
+            }
         }
     }
 
     public void trackGive(Player player, ItemStack items) {
-        if(
-            hasQuests(player) &&
-            hasParamsOf(player, ObjectiveType.GIVE, items.getType().name())
-        ) {
-            Tracker tracker = questOfTypeAndTarget(player, ObjectiveType.GIVE, items.getType().name());
-            QuestObjective objective = getObjective(tracker, ObjectiveType.GIVE, items.getType().name());
-
-            if(objective == null) return;
+        if(!hasQuests(player)) return;
+        for(Tracker tracker : progress.get(player.getUniqueId())) {
+            List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.GIVE, items.getType());
+            if(objectives.size() == 0) continue;
 
             int[] tracks = tracker.getProgress();
-            int index = objectiveIndex(tracker, objective);
+            for(QuestObjective objective : objectives) {
+                int index = objectiveIndex(tracker, objective);
+                if(objective.getAmount() <= tracks[index]) return;
 
-            if(objective.getAmount() <= tracks[index]) return;
-
-            ItemStack[] inventory = player.getInventory().getContents();
-            for(ItemStack item : inventory) {
-                if(item.getType() == items.getType()) {
-                    int amount = item.getAmount();
-                    if(amount + tracks[index] >= objective.getAmount()) {
-                        tracks[index] = objective.getAmount();
-                        item.setAmount(amount + tracks[index] - objective.getAmount());
-                        checkCompletion(player, tracker);
-                        break;
+                ItemStack[] inventory = player.getInventory().getContents();
+                for(ItemStack item : inventory) {
+                    if(item.getType() == items.getType()) {
+                        int amount = item.getAmount();
+                        if(amount + tracks[index] >= objective.getAmount()) {
+                            item.setAmount(amount + tracks[index] - objective.getAmount());
+                            checkCompletion(player, tracker);
+                            break;
+                        }
+                        item.setAmount(0);
+                        tracks[index] += amount;
                     }
-                    item.setAmount(0);
-                    tracks[index] += amount;
                 }
             }
         }
@@ -176,8 +150,8 @@ public class QuestManager {
                     }
                 }
             }
-            player.sendMessage(message);
         }
+        player.sendMessage(message);
     }
 
     public void addPlayer(Player player) {

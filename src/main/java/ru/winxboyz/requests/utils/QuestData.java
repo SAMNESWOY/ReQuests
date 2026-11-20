@@ -35,7 +35,7 @@ public class QuestData {
     }
 
     public ItemStack getBook() {
-        return book;
+        return book.clone();
     }
 
     public String getDisplayName() {
@@ -51,17 +51,44 @@ public class QuestData {
     }
 
     public List<QuestObjective> getObjectives() {
-        return objectives;
+        return objectives.copy();
     }
 
-    public QuestObjective queryObjective(ObjectiveType type, String target) {
+    public List<QuestObjective> queryObjectives(ObjectiveType type, String target, int amount) {
         return objectives.stream()
-        .filter(obj -> obj.getType() == type && obj.getTarget().equals(target))
-        .findFirst().orElse(null);
+        .filter(obj ->
+            obj.getType() == type &&
+            obj.getTarget().equals(target &&
+            obj.getAmount() == amount
+        )).toList();
+    }
+    public List<QuestObjective> queryObjectives(ObjectiveType type, String target) {
+        return objectives.stream()
+        .filter(obj -> obj.getType() == type && obj.getTarget().equals(target)).toList();
+    }
+    public List<QuestObjective> queryObjectives(ObjectiveType type, int amount) {
+        return objectives.stream()
+        .filter(obj -> obj.getType() == type && obj.getAmount() == amount).toList();
+    }
+    public List<QuestObjective> queryObjectives(String target, int amount) {
+        return objectives.stream()
+        .filter(obj -> obj.getTarget().equals(target) && obj.getAmount() == amount).toList();
+    }
+    public List<QuestObjective> queryObjectives(ObjectiveType type) {
+        return objectives.stream()
+        .filter(obj -> obj.getType() == type).toList();
+    }
+    public List<QuestObjective> queryObjectives(int amount) {
+        return objectives.stream()
+        .filter(obj -> obj.getAmount() == amount).toList();
+    }
+    public List<QuestObjective> queryObjectives(String target) {
+        return objectives.stream()
+        .filter(obj -> obj.getTarget().equals(target)).toList();
     }
 
     public List<QuestReward> getRewards() {
-        return rewards;
+        return rewards.copy();
     }
 
     public QuestData(
@@ -79,11 +106,12 @@ public class QuestData {
 
         List<Component> pages = new ArrayList<>(1);
 
-        for(int i = 0; i < description.length() / 1000; i++) {
+        int i = 0;
+        do {
             int endIndex = Math.min((i+1)*1000, description.length());
             String pageText = description.substring(i*1000, endIndex);
             pages.add(Component.text(pageText));
-        }
+        } while(i++ < description.length() / 1000);
 
         if(((TextComponent)pages.getLast()).content().length() >= 500)
             pages.add(Component.text(""));
@@ -111,7 +139,7 @@ public class QuestData {
                     rewardText.append("$").append(reward.getAmount()).append("\n");
                     break;
                 case RewardType.ITEM:
-                    String itemName = Bukkit.createBlockData(reward.getIdentifier()).getMaterial().name();
+                    String itemName = Material.getMaterial(reward.getIdentifier()).name();
                     rewardText.append(reward.getAmount()).append(" ").append(itemName).append("\n");
                     break;
             }

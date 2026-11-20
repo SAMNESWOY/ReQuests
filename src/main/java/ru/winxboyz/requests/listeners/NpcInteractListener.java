@@ -17,7 +17,7 @@ public class NpcInteractListener implements Listener {
         String npc = event.getNpc().getData().getId();
         Player player = event.getPlayer();
         if(
-            questManager.npcHasObjectiveOf(npc, ObjectiveType.GIVE) &&
+            questManager.hasObjective(npc, ObjectiveType.GIVE) &&
             questManager.hasQuestFrom(player, npc)) {
                 questManager.trackGive(player, questManager.getItems(npc, ObjectiveType.GIVE));
         }

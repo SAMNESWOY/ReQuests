@@ -1,9 +1,9 @@
 package ru.winxboyz.requests.utils;
 
 public class QuestObjective {
-    private ObjectiveType type;
-    private String target;
-    private int amount;
+    private final ObjectiveType type;
+    private final String target;
+    private final int amount;
 
     public ObjectiveType getType() {
         return type;

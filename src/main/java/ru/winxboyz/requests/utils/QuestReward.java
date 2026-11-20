@@ -2,9 +2,9 @@ package ru.winxboyz.requests.utils;
 
 public class QuestReward {
 
-    private RewardType type;
-    private String identifier;
-    private int amount;
+    private final RewardType type;
+    private final String identifier;
+    private final int amount;
 
     public RewardType getType() {
         return type;
