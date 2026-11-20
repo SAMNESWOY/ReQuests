@@ -51,16 +51,16 @@ public class QuestData {
     }
 
     public List<QuestObjective> getObjectives() {
-        return objectives.copy();
+        return List.copyOf(objectives);
     }
 
     public List<QuestObjective> queryObjectives(ObjectiveType type, String target, int amount) {
         return objectives.stream()
         .filter(obj ->
             obj.getType() == type &&
-            obj.getTarget().equals(target &&
+            obj.getTarget().equals(target) &&
             obj.getAmount() == amount
-        )).toList();
+        ).toList();
     }
     public List<QuestObjective> queryObjectives(ObjectiveType type, String target) {
         return objectives.stream()
@@ -88,13 +88,16 @@ public class QuestData {
     }
 
     public List<QuestReward> getRewards() {
-        return rewards.copy();
+        return List.copyOf(rewards);
     }
 
     public QuestData(
         String name, String displayName, String description, String npc,
         List<QuestObjective> objectives, List<QuestReward> rewards,
         long duration, long cooldown) {
+        
+        if(cooldown < duration) throw new IllegalArgumentException("Cooldown cannot be less than duration");
+        
         this.cooldown = cooldown;
         this.duration = duration;
         this.displayName = displayName;
@@ -115,7 +118,7 @@ public class QuestData {
 
         if(((TextComponent)pages.getLast()).content().length() >= 500)
             pages.add(Component.text(""));
-        pages.getLast().append(Component.text("\n\nЦель:\n").decorate(TextDecoration.BOLD));
+        pages.set(pages.size()-1,pages.getLast().append(Component.text("\n\nЦель:\n").decorate(TextDecoration.BOLD)));
 
         for(QuestObjective objective : objectives) {
             StringBuilder objectiveText = new StringBuilder().append("- ");
@@ -126,9 +129,9 @@ public class QuestData {
                 case ObjectiveType.SMELT -> objectiveText.append("Переплавить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
                 case ObjectiveType.BREW  -> objectiveText.append("Приготовить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
             }
-            pages.getLast().append(Component.text(objectiveText.toString()));
+            pages.set(pages.size()-1,pages.getLast().append(Component.text(objectiveText.toString())));
         }
-        pages.getLast().append(Component.text("\nНаграда:\n").decorate(TextDecoration.BOLD));
+        pages.set(pages.size()-1,pages.getLast().append(Component.text("\nНаграда:\n").decorate(TextDecoration.BOLD)));
         for(QuestReward reward : rewards) {
             StringBuilder rewardText = new StringBuilder().append("- ");
             switch(reward.getType()) {
@@ -143,19 +146,19 @@ public class QuestData {
                     rewardText.append(reward.getAmount()).append(" ").append(itemName).append("\n");
                     break;
             }
-            pages.getLast().append(Component.text(rewardText.toString()));
+            pages.set(pages.size()-1,pages.getLast().append(Component.text(rewardText.toString())));
         }
-        pages.getLast().append(Component.text("Принять\n").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD)
+        pages.set(pages.size()-1,pages.getLast().append(Component.text("Принять\n").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD)
         .clickEvent(ClickEvent.callback(audience -> {
             if(audience instanceof Player player) {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "requests " + player.getName() + " accept " + name);
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "requests " + player.getName() + " " + name + " accept");
             }
         }))).append(Component.text("Отклонить\n").color(NamedTextColor.RED).decorate(TextDecoration.BOLD)
         .clickEvent(ClickEvent.callback(audience -> {
             if(audience instanceof Player player) {
                 player.closeInventory();
             }
-        })));
+        }))));
 
         BookMeta meta = (BookMeta) book.getItemMeta();
 

@@ -74,13 +74,14 @@ public class QuestManager {
     public void trackCraft(Player player, ItemStack items) {
         if(!hasQuests(player)) return;
         for(Tracker tracker : progress.get(player.getUniqueId())) {
-            List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.CRAFT, items.getType());
+            if(tracker.isOnCooldown()) continue;
+            List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.CRAFT, items.getType().getKey().toString());
             if(objectives.size() == 0) continue;
 
             int[] tracks = tracker.getProgress();
             for(QuestObjective objective : objectives) {
                 int index = objectiveIndex(tracker, objective);
-                if(objective.getAmount() <= tracks[index]) return;
+                if(objective.getAmount() <= tracks[index]) continue;
                 tracks[index] += items.getAmount();
                 if(objective.getAmount() <= tracks[index])
                     checkCompletion(player, tracker);
@@ -91,7 +92,8 @@ public class QuestManager {
     public void trackGive(Player player, ItemStack items) {
         if(!hasQuests(player)) return;
         for(Tracker tracker : progress.get(player.getUniqueId())) {
-            List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.GIVE, items.getType());
+            if(tracker.isOnCooldown()) continue;
+            List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.GIVE, items.getType().getKey().toString());
             if(objectives.size() == 0) continue;
 
             int[] tracks = tracker.getProgress();
@@ -101,7 +103,7 @@ public class QuestManager {
 
                 ItemStack[] inventory = player.getInventory().getContents();
                 for(ItemStack item : inventory) {
-                    if(item.getType() == items.getType()) {
+                    if(item != null && item.getType() == items.getType()) {
                         int amount = item.getAmount();
                         if(amount + tracks[index] >= objective.getAmount()) {
                             item.setAmount(amount + tracks[index] - objective.getAmount());
@@ -130,16 +132,16 @@ public class QuestManager {
         
         Component message = Component.text("Вы выполнили квест: " + quest.getDisplayName() + "!")
             .color(NamedTextColor.GREEN)
-            .append(Component.text("Награды: ").color(NamedTextColor.YELLOW));
+            .append(Component.text("Награды:\n").color(NamedTextColor.YELLOW));
 
         for(QuestReward reward : quest.getRewards()) {
-            message = message.append(Component.text(
+            message = message.append(Component.text((
                 reward.getType() == RewardType.MONEY ?
                     "$" + reward.getAmount() :
                 reward.getType() == RewardType.EXP   ?
                     reward.getAmount() + " очков опыта" :
-                reward.getAmount() + " шт " + Material.matchMaterial(reward.getIdentifier()).toString()
-            )).color(NamedTextColor.YELLOW);
+                reward.getAmount() + " шт " + Material.matchMaterial(reward.getIdentifier()).toString()) + "\n"
+            ).color(NamedTextColor.YELLOW));
             switch(reward.getType()) {
                 case MONEY -> ReQuests.getEconomy().depositPlayer(player, reward.getAmount());
                 case EXP -> player.giveExp(reward.getAmount());

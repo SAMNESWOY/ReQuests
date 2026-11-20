@@ -6,7 +6,9 @@ quests:
     duration: 14400000
     cooldown: 86400000
     objectives:
-      - "GIVE:CHERRY_SAPLING:10"
+      - type: "GIVE"
+        target: "minecraft:cherry_sapling"
+        amount: 10
     rewards:
       - money: 1000
         experience: 100

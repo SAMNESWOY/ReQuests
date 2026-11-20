@@ -16,12 +16,13 @@ public class NpcInteractListener implements Listener {
     public void onNpcInteract(NpcInteractEvent event) {
         String npc = event.getNpc().getData().getId();
         Player player = event.getPlayer();
+        if(!questManager.isNpcQuestGiver(npc)) return;
         if(
             questManager.hasObjective(npc, ObjectiveType.GIVE) &&
             questManager.hasQuestFrom(player, npc)) {
                 questManager.trackGive(player, questManager.getItems(npc, ObjectiveType.GIVE));
-        }
-        questManager.openQuest(player, npc);
+        } else if(!questManager.hasQuestFrom(player,npc))
+            questManager.openQuest(player, npc);
     }
 
     public NpcInteractListener(QuestManager npcManager) {

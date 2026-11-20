@@ -2,7 +2,7 @@ package ru.winxboyz.requests.utils;
 
 public class Tracker {
     private final QuestData quest;
-    private long questStartTime
+    private long startTime;
     private Long cooldownStartTime = null;
     private final int[] progress;
 
@@ -14,7 +14,7 @@ public class Tracker {
         return startTime;
     }
 
-    public long getCooldownStartTime() {
+    public Long getCooldownStartTime() {
         return cooldownStartTime;
     }
 
@@ -26,15 +26,19 @@ public class Tracker {
         return progress;
     }
 
+    public boolean isOnCooldown() {
+        return cooldownStartTime != null && System.currentTimeMillis() <= getResetAt();
+    }
+
     public void sendOnCooldown() {
         cooldownStartTime = System.currentTimeMillis();
     }
 
-    public Tracker(QuestData quest, long questStartTime) {
+    public Tracker(QuestData quest, long startTime) {
         this.quest = quest;
         progress = new int[quest.getObjectives().size()];
         for(int i = 0; i < progress.length; i++)
             progress[i] = 0;
-        this.questStartTime = startTime;
+        this.startTime = startTime;
     }
 }

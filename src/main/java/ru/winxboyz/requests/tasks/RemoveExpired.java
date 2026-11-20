@@ -19,13 +19,15 @@ public class RemoveExpired {
         while(iterator.hasNext()) {
             Map.Entry<UUID,List<Tracker>> entry = iterator.next();
             List<Tracker> trackers = entry.getValue();
-            for(Tracker tracker : trackers) {
-                if(currentTime < tracker.getStartTime() + tracker.getQuest().getDuration()) {
-                    trackers.remove(tracker);
-                };
+            Iterator<Tracker> iter = trackers.iterator();
+            while(iter.hasNext()) {
+                Tracker tracker = iter.next();
+                if(!tracker.isOnCooldown() && currentTime >= tracker.getStartTime() + tracker.getQuest().getDuration()) {
+                    iter.remove();
+                }
             }
-            if(trackers.size() == 0)
-                iterator.remove();
+            // if(trackers.size() == 0)
+            //     iterator.remove();
         }
     }
 

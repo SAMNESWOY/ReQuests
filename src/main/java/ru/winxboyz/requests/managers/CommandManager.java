@@ -27,12 +27,16 @@ public class CommandManager {
     public void handleAccept(Player player, String questName) {
         QuestData quest = quests.stream().filter(q -> q.getName().equals(questName)).findFirst().orElse(null);
         if(quest == null) {
-            player.sendMessage(Component.text(messages.get("quest-not-found")).color(NamedTextColor.RED));
+            player.sendMessage(Component.text(messages.getOrDefault("quest-not-found","КВЕСТ НЕ НАЙДЕН")).color(NamedTextColor.RED));
+            return;
+        }
+        if(progress.get(player.getUniqueId()).stream().anyMatch(t -> t.getQuest() == quest)) {
+            player.sendMessage(Component.text(messages.getOrDefault("quest-already-accepted","КВЕСТ УЖЕ ВЗЯТ")).color(NamedTextColor.RED));
             return;
         }
         Tracker tracker = new Tracker(quest, System.currentTimeMillis());
         progress.get(player.getUniqueId()).add(tracker);
-        player.sendMessage(Component.text(messages.get("quest-accepted")).color(NamedTextColor.GREEN));
+        player.sendMessage(Component.text(messages.getOrDefault("quest-accepted","КВЕСТ ВЗЯТ")).color(NamedTextColor.GREEN));
     }
 
     public CommandManager(ReQuests plugin) {
