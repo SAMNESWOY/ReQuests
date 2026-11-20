@@ -23,7 +23,6 @@ import ru.winxboyz.requests.utils.QuestData;
 import ru.winxboyz.requests.utils.Tracker;
 
 public class ReQuests extends JavaPlugin {
-    
 
     private final PluginManager pluginManager = PluginManager.getInstance();
     private String locale;
@@ -34,8 +33,6 @@ public class ReQuests extends JavaPlugin {
 
     private static Economy econ = null;
 
-    private RemoveExpired removeExpired;
-
     public String getLocale() {
         return locale;
     }
@@ -45,14 +42,14 @@ public class ReQuests extends JavaPlugin {
     }
 
     public List<QuestData> getQuests() {
-        return quests;
+        return List.copyOf(quests);
     }
 
     public ConcurrentHashMap<UUID,List<Tracker>> getProgress() {
         return progress;
     }
     public Map<String,String> getMessages() {
-        return messages;
+        return Map.copyOf(messages);
     }
 
     public void reload() {
@@ -97,7 +94,8 @@ public class ReQuests extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ItemCraftListener(pluginManager.getQuestManager()), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(pluginManager.getQuestManager()), this);
 
-        removeExpired = new RemoveExpired(progress);
+        
+        RemoveExpired removeExpired = new RemoveExpired(progress);
 
         Bukkit.getScheduler().runTaskTimer(this, removeExpired::tick, 1000L, 1000L);
         getLogger().info(getName() + " has been enabled!");

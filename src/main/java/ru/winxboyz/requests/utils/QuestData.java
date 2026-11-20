@@ -139,7 +139,7 @@ public class QuestData {
                     rewardText.append("$").append(reward.getAmount()).append("\n");
                     break;
                 case RewardType.ITEM:
-                    String itemName = Material.getMaterial(reward.getIdentifier()).name();
+                    String itemName = Material.matchMaterial(reward.getIdentifier()).name();
                     rewardText.append(reward.getAmount()).append(" ").append(itemName).append("\n");
                     break;
             }
