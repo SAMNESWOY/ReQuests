@@ -1,6 +1,10 @@
 quests:
-  - name: test
-    description: test
+  - name: "sakura"
+    display-name: "Цветение вишни"
+    description: "Принесите мне 10 вишневых саженцев"
+    npc: "npc_sakura"
+    duration: 14400000
+    cooldown: 86400000
     objectives:
       - "GIVE:CHERRY_SAPLING:10"
     rewards:
