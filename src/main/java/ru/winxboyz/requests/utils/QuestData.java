@@ -1,0 +1,140 @@
+package ru.winxboyz.requests.utils;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BookMeta;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+
+public class QuestData {
+    private final String name, displayName, description, npc;
+    private final List<QuestObjective> objectives;
+    private final List<QuestReward> rewards;
+    private final long cooldown, duration;
+    private final ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
+
+    public long getCooldown() {
+        return cooldown;
+    }
+
+    public long getDuration() {
+        return duration;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public ItemStack getBook() {
+        return book;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public String getNpc() {
+        return npc;
+    }
+
+    public List<QuestObjective> getObjectives() {
+        return objectives;
+    }
+
+    public QuestObjective queryObjective(ObjectiveType type, String target) {
+        return objectives.stream()
+        .filter(obj -> obj.getType() == type && obj.getTarget().equals(target))
+        .findFirst().orElse(null);
+    }
+
+    public List<QuestReward> getRewards() {
+        return rewards;
+    }
+
+    public QuestData(
+        String name, String displayName, String description, String npc,
+        List<QuestObjective> objectives, List<QuestReward> rewards,
+        long duration, long cooldown) {
+        this.cooldown = cooldown;
+        this.duration = duration;
+        this.displayName = displayName;
+        this.name = name;
+        this.description = description;
+        this.npc = npc;
+        this.objectives = objectives;
+        this.rewards = rewards;
+
+        List<Component> pages = new ArrayList<>(1);
+
+        for(int i = 0; i < description.length() / 1000; i++) {
+            int endIndex = Math.min((i+1)*1000, description.length());
+            String pageText = description.substring(i*1000, endIndex);
+            pages.add(Component.text(pageText));
+        }
+
+        if(((TextComponent)pages.getLast()).content().length() >= 500)
+            pages.add(Component.text(""));
+        pages.getLast().append(Component.text("\n\nЦель:\n").decorate(TextDecoration.BOLD));
+
+        for(QuestObjective objective : objectives) {
+            StringBuilder objectiveText = new StringBuilder().append("- ");
+            switch(objective.getType()) {
+                case ObjectiveType.GIVE  -> objectiveText.append("Принести ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+                case ObjectiveType.KILL  -> objectiveText.append("Убить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+                case ObjectiveType.CRAFT -> objectiveText.append("Создать ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+                case ObjectiveType.SMELT -> objectiveText.append("Переплавить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+                case ObjectiveType.BREW  -> objectiveText.append("Приготовить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+            }
+            pages.getLast().append(Component.text(objectiveText.toString()));
+        }
+        pages.getLast().append(Component.text("\nНаграда:\n").decorate(TextDecoration.BOLD));
+        for(QuestReward reward : rewards) {
+            StringBuilder rewardText = new StringBuilder().append("- ");
+            switch(reward.getType()) {
+                case RewardType.EXP:
+                    rewardText.append(reward.getAmount()).append(" опыта\n");
+                    break;
+                case RewardType.MONEY:
+                    rewardText.append("$").append(reward.getAmount()).append("\n");
+                    break;
+                case RewardType.ITEM:
+                    String itemName = Bukkit.createBlockData(reward.getIdentifier()).getMaterial().name();
+                    rewardText.append(reward.getAmount()).append(" ").append(itemName).append("\n");
+                    break;
+            }
+            pages.getLast().append(Component.text(rewardText.toString()));
+        }
+        pages.getLast().append(Component.text("Принять\n").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD)
+        .clickEvent(ClickEvent.callback(audience -> {
+            if(audience instanceof Player player) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "requests " + player.getName() + " accept " + name);
+            }
+        }))).append(Component.text("Отклонить\n").color(NamedTextColor.RED).decorate(TextDecoration.BOLD)
+        .clickEvent(ClickEvent.callback(audience -> {
+            if(audience instanceof Player player) {
+                player.closeInventory();
+            }
+        })));
+
+        BookMeta meta = (BookMeta) book.getItemMeta();
+
+        meta.title(Component.text(displayName));
+        meta.author(Component.text(npc));
+        meta.pages(pages);
+
+        book.setItemMeta(meta);
+    }
+}

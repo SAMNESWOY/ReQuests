@@ -1,0 +1,13 @@
+quests:
+  - name: test
+    description: test
+    objectives:
+      - "GIVE:CHERRY_SAPLING:10"
+    rewards:
+      - money: 1000
+        experience: 100
+        items: []
+locale: en
+locales:
+  ru:
+  en:

@@ -1,0 +1,12 @@
+main: ru.winxboyz.requests
+version: 1.0.0-SNAPSHOT
+name: ReQuests
+author: bubbleshotgum
+description: 
+api-version: 1.21
+
+depend:
+  - Vault
+  - FancyNpcs
+
+libraries: []

@@ -1,0 +1,197 @@
+package ru.winxboyz.requests.managers;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import ru.winxboyz.requests.ReQuests;
+import ru.winxboyz.requests.utils.ObjectiveType;
+import ru.winxboyz.requests.utils.QuestData;
+import ru.winxboyz.requests.utils.QuestObjective;
+import ru.winxboyz.requests.utils.QuestReward;
+import ru.winxboyz.requests.utils.RewardType;
+import ru.winxboyz.requests.utils.Tracker;
+
+public class QuestManager {
+
+    // private final ReQuests plugin;
+    private List<QuestData> quests;
+    private ConcurrentHashMap<UUID,List<Tracker>> progress;
+
+    public boolean isNpcQuestGiver(String npcId) {
+        return quests.stream().anyMatch(q -> q.getNpc().equals(npcId));
+    }
+    public void openQuest(Player player, String npcId) {
+        if(isNpcQuestGiver(npcId)) {
+            QuestData quest = quests.stream().filter(q -> q.getNpc().equals(npcId)).findFirst().get();
+            player.openBook(quest.getBook());
+        }
+    }
+
+    public boolean hasQuests(Player player) {
+        return progress.keySet().contains(player.getUniqueId());
+    }
+
+    public boolean hasQuestFrom(Player player, String npcId) {
+        return progress.get(player.getUniqueId()).stream().filter(t -> t.getQuest().getNpc().equals(npcId)).findFirst().orElse(null) != null;
+    }
+
+    public  boolean npcHasObjectiveOf(String npc, ObjectiveType type) {
+        return quests.stream().anyMatch(q -> q.getNpc().equals(npc) && q.getObjectives().stream().anyMatch(obj -> obj.getType() == type));
+    }
+
+    public boolean hasObjectiveOf(Player player, ObjectiveType type) {
+        return progress.get(player.getUniqueId())
+        .stream().anyMatch(t -> 
+            t.getQuest().getObjectives().stream().anyMatch(obj -> obj.getType() == type));
+    }
+
+    public boolean hasParamsOf(Player player, ObjectiveType type, String target) {
+        return progress.get(player.getUniqueId())
+        .stream().anyMatch(t -> 
+            t.getQuest().queryObjective(type, target) != null);
+    }
+
+    public Tracker questOfTypeAndTarget(Player player, ObjectiveType type, String target) {
+        return progress.get(player.getUniqueId())
+        .stream().filter(t -> 
+            t.getQuest().getObjectives()
+            .stream().anyMatch(obj -> obj.getType() == type && obj.getTarget().equals(target))).findFirst().get();
+    }
+
+    public QuestObjective getObjective(Tracker tracker, ObjectiveType type, String target) {
+        return tracker.getQuest().queryObjective(type, target);
+    }
+
+    public int objectiveIndex(Tracker tracker, QuestObjective objective) {
+        return tracker.getQuest().getObjectives().indexOf(objective);
+    }
+
+    public QuestData getQuest(String npcId) {
+        return quests.stream().filter(q -> q.getNpc().equals(npcId)).findFirst().orElse(null);
+    }
+
+    public ItemStack getItems(String npcId, ObjectiveType type) {
+        if(
+            type == ObjectiveType.KILL ||
+            !isNpcQuestGiver(npcId)) return null;
+        QuestObjective objective = getQuest(npcId).getObjectives().stream().filter(obj -> obj.getType() == type).findFirst().orElse(null);
+        return new ItemStack(Material.getMaterial(objective.getTarget()), objective.getAmount());
+    }
+
+    public void trackCraft(Player player, ItemStack items) {
+        if(
+            hasQuests(player) &&
+            hasParamsOf(player, ObjectiveType.CRAFT, items.getType().name())
+        ) {
+            Tracker tracker = questOfTypeAndTarget(player, ObjectiveType.CRAFT, items.getType().name());
+            QuestObjective objective = getObjective(tracker, ObjectiveType.CRAFT, items.getType().name());
+
+            if(objective == null) return;
+
+            int[] tracks = tracker.getProgress();
+            int index = objectiveIndex(tracker, objective);
+
+            if(objective.getAmount() <= tracks[index]) return;
+
+            tracks[index] += items.getAmount();
+
+            if(objective.getAmount() <= tracks[index])
+                checkCompletion(player, tracker);
+        }
+    }
+
+    public void trackGive(Player player, ItemStack items) {
+        if(
+            hasQuests(player) &&
+            hasParamsOf(player, ObjectiveType.GIVE, items.getType().name())
+        ) {
+            Tracker tracker = questOfTypeAndTarget(player, ObjectiveType.GIVE, items.getType().name());
+            QuestObjective objective = getObjective(tracker, ObjectiveType.GIVE, items.getType().name());
+
+            if(objective == null) return;
+
+            int[] tracks = tracker.getProgress();
+            int index = objectiveIndex(tracker, objective);
+
+            if(objective.getAmount() <= tracks[index]) return;
+
+            ItemStack[] inventory = player.getInventory().getContents();
+            for(ItemStack item : inventory) {
+                if(item.getType() == items.getType()) {
+                    int amount = item.getAmount();
+                    if(amount + tracks[index] >= objective.getAmount()) {
+                        tracks[index] = objective.getAmount();
+                        item.setAmount(amount + tracks[index] - objective.getAmount());
+                        checkCompletion(player, tracker);
+                        break;
+                    }
+                    item.setAmount(0);
+                    tracks[index] += amount;
+                }
+            }
+        }
+    }
+
+    public void checkCompletion(Player player, Tracker tracker) {
+        for(int i = 0; i < tracker.getProgress().length; i++)
+            if(tracker.getProgress()[i] < tracker.getQuest().getObjectives().get(i).getAmount())
+                return;
+        handleReward(player, tracker.getQuest());
+    }
+
+    public void handleReward(Player player, QuestData quest) {
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0F, 1.0F);
+        
+        Component message = Component.text("Вы выполнили квест: " + quest.getDisplayName() + "!")
+            .color(NamedTextColor.GREEN)
+            .append(Component.text("Награды: ")).color(NamedTextColor.YELLOW);
+
+        player.sendMessage(message);
+        for(QuestReward reward : quest.getRewards()) {
+            message = message.append(Component.text(
+                reward.getType() == RewardType.MONEY ?
+                    "$" + reward.getAmount() :
+                reward.getType() == RewardType.EXP   ?
+                    reward.getAmount() + " очков опыта" :
+                reward.getAmount() + " шт " + Material.getMaterial(reward.getIdentifier()).toString()
+            )).color(NamedTextColor.YELLOW);
+            switch(reward.getType()) {
+                case MONEY -> ReQuests.getEconomy().depositPlayer(player, reward.getAmount());
+                case EXP -> player.giveExp(reward.getAmount());
+                case ITEM -> {
+                    HashMap<Integer,ItemStack> leftOvers = player.getInventory()
+                    .addItem(new ItemStack(Material.getMaterial(reward.getIdentifier()),reward.getAmount()));
+                    for(ItemStack item : leftOvers.values()) {
+                        player.getWorld().dropItem(player.getLocation(), item);
+                    }
+                }
+            }
+            player.sendMessage(message);
+        }
+    }
+
+    public void addPlayer(Player player) {
+        progress.put(player.getUniqueId(), new ArrayList<>());
+    }
+
+    public void removePlayer(Player player) {
+        progress.remove(player.getUniqueId());
+    }
+
+    public QuestManager(ReQuests plugin) {
+        // this.plugin = plugin;
+        this.quests = plugin.getQuests();
+        this.progress = plugin.getProgress();
+    }
+
+}
