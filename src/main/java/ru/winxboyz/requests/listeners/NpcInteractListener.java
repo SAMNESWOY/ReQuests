@@ -5,8 +5,12 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
 import de.oliver.fancynpcs.api.events.NpcInteractEvent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import ru.winxboyz.requests.managers.QuestManager;
 import ru.winxboyz.requests.utils.ObjectiveType;
+import ru.winxboyz.requests.utils.QuestData;
+import ru.winxboyz.requests.utils.TimeMessage;
 
 public class NpcInteractListener implements Listener {
 
@@ -14,15 +18,36 @@ public class NpcInteractListener implements Listener {
 
     @EventHandler
     public void onNpcInteract(NpcInteractEvent event) {
-        String npc = event.getNpc().getData().getId();
+        // // У NPC два идентификатора: внутренний id и имя. Квест ищем по обоим.
+        // QuestData quest = questManager.getQuestByNpc(
+        //     event.getNpc().getData().getId(),
+        //     event.getNpc().getData().getName()
+        // );
+        // if(quest == null) return;
+
+        String npcName = event.getNpc().getData().getName();
+        String npcId   = event.getNpc().getData().getId();
+        
+
+
+        if(!questManager.isNpcQuestGiver(npcName, npcId) && !questManager.isNpcQuestGiver(npcName, npcId)) return;
+        QuestData quest = questManager.getQuest(npcName, npcId);
+        if(quest == null)
+            quest = questManager.getQuest(npcName, npcId);
+        
         Player player = event.getPlayer();
-        if(!questManager.isNpcQuestGiver(npc)) return;
+        if(questManager.isOnCooldown(player, quest)) {
+            player.sendMessage(
+                Component.text("Квест станет доступен через ").color(NamedTextColor.RED)
+                .append(Component.text(TimeMessage.toString(questManager.getCooldown(player, quest), "ru")).color(NamedTextColor.AQUA)));
+            return;
+        }
         if(
-            questManager.hasObjective(npc, ObjectiveType.GIVE) &&
-            questManager.hasQuestFrom(player, npc)) {
-                questManager.trackGive(player, questManager.getItems(npc, ObjectiveType.GIVE));
-        } else if(!questManager.hasQuestFrom(player,npc))
-            questManager.openQuest(player, npc);
+            questManager.hasObjective(quest, ObjectiveType.GIVE) &&
+            questManager.hasQuestFrom(player, npcName, npcId)) {
+                questManager.trackGive(player, questManager.getItems(npcName, npcId, ObjectiveType.GIVE));
+        } else if(!questManager.hasQuestFrom(player, npcName, npcId))
+            questManager.openQuest(player, npcName, npcId);
     }
 
     public NpcInteractListener(QuestManager npcManager) {

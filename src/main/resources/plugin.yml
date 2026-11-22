@@ -1,4 +1,4 @@
-main: ru.winxboyz.requests
+main: ru.winxboyz.requests.ReQuests
 version: 1.0.0-SNAPSHOT
 name: ReQuests
 author: bubbleshotgum

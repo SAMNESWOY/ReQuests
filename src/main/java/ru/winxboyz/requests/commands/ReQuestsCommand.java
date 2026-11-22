@@ -1,6 +1,6 @@
 package ru.winxboyz.requests.commands;
 
-import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import com.mojang.brigadier.Command;
@@ -14,6 +14,7 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSelectorArgumentResolver;
+import net.kyori.adventure.text.Component;
 import ru.winxboyz.requests.ReQuests;
 import ru.winxboyz.requests.managers.CommandManager;
 // import ru.winxboyz.requests.managers.DatabaseManager;
@@ -25,8 +26,11 @@ public class ReQuestsCommand {
     private CommandManager commandManager;
 
     private final LiteralArgumentBuilder<CommandSourceStack>
-        requests = Commands.literal("requests")
-        .requires(source -> source.getSender().isOp() && source.getSender() instanceof ConsoleCommandSender),
+        // Команда видна и игрокам: раньше она была только для консоли, и в игре
+        // её не было видно вообще.
+        requests = Commands.literal("requests").requires(ctx -> ctx.getSender().isOp()),
+        list     = Commands.literal("list"),
+        reload     = Commands.literal("reload"),
         accept   = Commands.literal("accept");
         // add      = Commands.literal("add"),
         // remove   = Commands.literal("remove"),
@@ -50,6 +54,16 @@ public class ReQuestsCommand {
         } catch(CommandSyntaxException e) {
             plugin.getLogger().warning(commandManager.getMessages().get("syntax-error") + " add:\n" + e.getMessage());
         }
+        return Command.SINGLE_SUCCESS;
+    },
+    executeList = ctx -> {
+        CommandSender sender = ctx.getSource().getSender();
+        commandManager.handleList(sender);
+        return Command.SINGLE_SUCCESS;
+    },
+    executeReload = ctx -> {
+        plugin.reload();
+        ctx.getSource().getSender().sendMessage(Component.text("Данные конфигурации перезагружены"));
         return Command.SINGLE_SUCCESS;
     };
     // executeAddRegion    = ctx -> {
@@ -90,7 +104,10 @@ public class ReQuestsCommand {
     // }
 
     public LiteralCommandNode<CommandSourceStack> initialize() {
-        LiteralArgumentBuilder<CommandSourceStack> builder = requests.then(player.then(quest.then(accept.executes(executeAccept))));
+        LiteralArgumentBuilder<CommandSourceStack> builder = requests
+        .then(player.then(quest.then(accept.executes(executeAccept))))
+        .then(list.executes(executeList))
+        .then(reload.executes(executeReload));
             // .then(add   .executes(executeAddRegion)   .then(pos.executes(executeAdd)))
             // .then(remove.executes(executeRemoveRegion).then(pos.executes(executeRemove)))
             // .then(list.executes(ctx -> {

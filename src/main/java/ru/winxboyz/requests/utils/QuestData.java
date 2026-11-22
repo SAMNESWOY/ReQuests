@@ -116,7 +116,7 @@ public class QuestData {
             pages.add(Component.text(pageText));
         } while(i++ < description.length() / 1000);
 
-        if(((TextComponent)pages.getLast()).content().length() >= 500)
+        if(((TextComponent)pages.getLast()).content().length() >= 100)
             pages.add(Component.text(""));
         pages.set(pages.size()-1,pages.getLast().append(Component.text("\n\nЦель:\n").decorate(TextDecoration.BOLD)));
 
@@ -131,6 +131,8 @@ public class QuestData {
             }
             pages.set(pages.size()-1,pages.getLast().append(Component.text(objectiveText.toString())));
         }
+        
+        if(((TextComponent)pages.getLast()).content().length() >= 100)
         pages.set(pages.size()-1,pages.getLast().append(Component.text("\nНаграда:\n").decorate(TextDecoration.BOLD)));
         for(QuestReward reward : rewards) {
             StringBuilder rewardText = new StringBuilder().append("- ");

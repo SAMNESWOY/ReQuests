@@ -1,10 +1,10 @@
 package ru.winxboyz.requests.managers;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -23,21 +23,53 @@ import ru.winxboyz.requests.utils.Tracker;
 
 public class QuestManager {
 
-    // private final ReQuests plugin;
-    private List<QuestData> quests;
-    private ConcurrentHashMap<UUID,List<Tracker>> progress;
+    private final ReQuests plugin;
+    private final Map<UUID,List<Tracker>> progress;
 
-    public boolean isNpcQuestGiver(String npcId) {
-        return quests.stream().anyMatch(q -> q.getNpc().equals(npcId));
+    /**
+     * Квесты берём у плагина на лету, а не копируем в конструкторе.
+     * Менеджер создаётся в PluginManager.initialize() до загрузки конфига,
+     * поэтому копия в конструкторе навсегда оставалась null.
+     * Так же список корректно подхватывается после reload.
+     */
+    private List<QuestData> quests() {
+        List<QuestData> loaded = plugin.getQuests();
+        return loaded == null ? List.of() : loaded;
     }
 
-    public QuestData getQuest(String npcId) {
-        return quests.stream().filter(q -> q.getNpc().equals(npcId)).findFirst().orElse(null);
+    /**
+     * Прогресс игрока может отсутствовать: например, если плагин поставили
+     * через /reload и игрок был онлайн до регистрации слушателя.
+     */
+    private List<Tracker> trackers(Player player) {
+        List<Tracker> list = progress.get(player.getUniqueId());
+        return list == null ? List.of() : list;
     }
 
-    public void openQuest(Player player, String npcId) {
-        if(isNpcQuestGiver(npcId)) {
-            QuestData quest = quests.stream().filter(q -> q.getNpc().equals(npcId)).findFirst().get();
+    public boolean isNpcQuestGiver(String npcId, String npcName) {
+        return quests().stream().anyMatch(q -> q.getNpc().equals(npcId) || q.getNpc().equals(npcName));
+    }
+
+    public QuestData getQuest(String npcId, String npcName) {
+        return quests().stream().filter(q -> q.getNpc().equals(npcId) || q.getNpc().equals(npcName)).findFirst().orElse(null);
+    }
+
+    /**
+     * Квест по NPC: ищем и по внутреннему id, и по имени.
+     *
+     * У NPC в FancyNpcs два идентификатора: внутренний (uuid-строка) и имя.
+     * В конфиге квеста обычно указано имя, поэтому ищем по обоим — иначе NPC
+     * с нужным именем не находился и квест не выдавался.
+     */
+    // public QuestData getQuestByNpc(String id, String name) {
+    //     return quests.stream()
+    //         .filter(q -> q.getNpc().equals(id) || (name != null && q.getNpc().equals(name)))
+    //         .findFirst().orElse(null);
+    // }
+
+    public void openQuest(Player player, String npcId, String npcName) {
+        if(isNpcQuestGiver(npcId, npcName)) {
+            QuestData quest = getQuest(npcId, npcName);
             player.openBook(quest.getBook());
         }
     }
@@ -47,27 +79,52 @@ public class QuestManager {
         progress.get(player.getUniqueId()).size() > 0;
     }
 
-    public boolean hasQuestFrom(Player player, String npcId) {
-        return progress.get(player.getUniqueId()).stream().anyMatch(t -> t.getQuest().getNpc().equals(npcId));
+    public boolean isOnCooldown(Player player, QuestData quest) {
+        return trackers(player).stream().anyMatch(t -> t.getQuest() == quest && t.isOnCooldown());
+    }
+
+    public Integer getCooldown(Player player, QuestData quest) {
+        Tracker tracker = trackers(player).stream().filter(t -> t.getQuest() == quest).findFirst().orElse(null);
+        if(tracker == null)
+            return null;
+        return (int) (tracker.getResetAt() - tracker.getCooldownStartTime()) / 1000;
+    }
+
+
+    public boolean hasQuest(Player player, String name) {
+        return trackers(player).stream().anyMatch(t -> t.getQuest().getName().equals(name));
+    }
+
+    public boolean hasQuest(Player player, QuestData quest) {
+        return trackers(player).stream().anyMatch(t -> t.getQuest().getName().equals(quest.getName()));
+    }
+
+
+    public boolean hasQuestFrom(Player player, String npcId, String npcName) {
+        return trackers(player).stream().anyMatch(t -> {String s = t.getQuest().getNpc(); return s.equals(npcId) || s.equals(npcName);});
     }
 
     public boolean hasObjective(QuestData quest, ObjectiveType type) {
         return quest.getObjectives().stream().anyMatch(obj -> obj.getType() == type);
     }
 
-    public boolean hasObjective(String npc, ObjectiveType type) {
-        return getQuest(npc).getObjectives().stream().anyMatch(obj -> obj.getType() == type);
+    public boolean hasObjective(String npcId, String npcName, ObjectiveType type) {
+        QuestData quest = getQuest(npcId, npcName);
+        return quest != null && quest.getObjectives().stream().anyMatch(obj -> obj.getType() == type);
     }
 
     public int objectiveIndex(Tracker tracker, QuestObjective objective) {
         return tracker.getQuest().getObjectives().indexOf(objective);
     }
 
-    public ItemStack getItems(String npcId, ObjectiveType type) {
+    public ItemStack getItems(String npcId, String npcName, ObjectiveType type) {
         if(
             type == ObjectiveType.KILL ||
-            !isNpcQuestGiver(npcId)) return null;
-        QuestObjective objective = getQuest(npcId).getObjectives().stream().filter(obj -> obj.getType() == type).findFirst().orElse(null);
+            !isNpcQuestGiver(npcId, npcName)) return null;
+        QuestData quest = getQuest(npcId, npcName);
+        if(quest == null) return null;
+        QuestObjective objective = quest.getObjectives().stream().filter(obj -> obj.getType() == type).findFirst().orElse(null);
+        if(objective == null) return null;
         return new ItemStack(Material.matchMaterial(objective.getTarget()), objective.getAmount());
     }
 
@@ -76,6 +133,24 @@ public class QuestManager {
         for(Tracker tracker : progress.get(player.getUniqueId())) {
             if(tracker.isOnCooldown()) continue;
             List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.CRAFT, items.getType().getKey().toString());
+            if(objectives.size() == 0) continue;
+
+            int[] tracks = tracker.getProgress();
+            for(QuestObjective objective : objectives) {
+                int index = objectiveIndex(tracker, objective);
+                if(objective.getAmount() <= tracks[index]) continue;
+                tracks[index] += items.getAmount();
+                if(objective.getAmount() <= tracks[index])
+                    checkCompletion(player, tracker);
+            }
+        }
+    }
+
+    public void trackSmelt(Player player, ItemStack items) {
+        if(!hasQuests(player)) return;
+        for(Tracker tracker : progress.get(player.getUniqueId())) {
+            if(tracker.isOnCooldown()) continue;
+            List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.SMELT, items.getType().getKey().toString());
             if(objectives.size() == 0) continue;
 
             int[] tracks = tracker.getProgress();
@@ -165,9 +240,20 @@ public class QuestManager {
         progress.remove(player.getUniqueId());
     }
 
+    // public void handleAccept(Player player, QuestData quest) {
+    //     List<Tracker> trackers = progress.get(player.getUniqueId());
+    //     if(hasQuest(player, quest)) {
+    //         player.sendMessage(Component.text(messages.getOrDefault("quest-already-accepted","КВЕСТ УЖЕ ВЗЯТ")).color(NamedTextColor.RED));
+    //         return;
+    //     }
+
+    //     Tracker tracker = new Tracker(quest, System.currentTimeMillis());
+    //     trackers.add(tracker);
+    //     player.sendMessage(Component.text(messages.getOrDefault("quest-accepted","КВЕСТ ВЗЯТ")).color(NamedTextColor.GREEN));
+    // }
+
     public QuestManager(ReQuests plugin) {
-        // this.plugin = plugin;
-        this.quests = plugin.getQuests();
+        this.plugin = plugin;
         this.progress = plugin.getProgress();
     }
 
