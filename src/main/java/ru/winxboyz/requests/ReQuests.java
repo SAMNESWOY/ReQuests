@@ -14,6 +14,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.milkbowl.vault.economy.Economy;
 import ru.winxboyz.requests.commands.ReQuestsCommand;
+import ru.winxboyz.requests.listeners.FurnaceBreakListener;
 import ru.winxboyz.requests.listeners.ItemCraftListener;
 import ru.winxboyz.requests.listeners.ItemSmeltListener;
 import ru.winxboyz.requests.listeners.NpcInteractListener;
@@ -102,13 +103,14 @@ public class ReQuests extends JavaPlugin {
         });
         getServer().getPluginManager().registerEvents(new NpcInteractListener(pluginManager.getQuestManager()), this);
         getServer().getPluginManager().registerEvents(new ItemCraftListener(pluginManager.getQuestManager()), this);
-        // getServer().getPluginManager().registerEvents(new ItemSmeltListener(pluginManager.getQuestManager()), this);
+        getServer().getPluginManager().registerEvents(new ItemSmeltListener(pluginManager.getQuestManager(),pluginManager.getInventoryManager()), this);
+        getServer().getPluginManager().registerEvents(new FurnaceBreakListener(pluginManager.getInventoryManager()), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(pluginManager.getQuestManager()), this);
 
         
         RemoveExpired removeExpired = new RemoveExpired(progress);
 
-        Bukkit.getScheduler().runTaskTimer(this, removeExpired::tick, 1000L, 1000L);
+        Bukkit.getScheduler().runTaskTimer(this, removeExpired::tick, 20L, 20L);
         getLogger().info(getName() + " has been enabled!");
     }
 

@@ -35,8 +35,12 @@ public class TimeMessage {
     }
 
     public static String toString(int time, String locale) {
-        return (time/3600>0 ? timeMessage(locale.equals("ru") ? HOURS_RU : HOURS_EN, time/3600) + " " : "")
-            +  (time/60  >0 ? timeMessage(locale.equals("ru") ? MINUTES_RU : MINUTES_EN, (time/60) % 60) + " " : "")
-            +  (time%60  >0 ? timeMessage(locale.equals("ru") ? SECONDS_RU : SECONDS_EN, time%60) : "");
+        int hours = time / 3600,
+            minutes = (time/60) % 60,
+            seconds = time % 60;
+
+        return (hours > 0   ? timeMessage(locale.equals("ru") ? HOURS_RU : HOURS_EN, hours) + " " : "")
+            +  (minutes > 0 ? timeMessage(locale.equals("ru") ? MINUTES_RU : MINUTES_EN, minutes) + " " : "")
+            +  (seconds > 0 ? timeMessage(locale.equals("ru") ? SECONDS_RU : SECONDS_EN, seconds) : "");
     }
 }

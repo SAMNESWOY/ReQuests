@@ -87,7 +87,7 @@ public class QuestManager {
         Tracker tracker = trackers(player).stream().filter(t -> t.getQuest() == quest).findFirst().orElse(null);
         if(tracker == null)
             return null;
-        return (int) (tracker.getResetAt() - tracker.getCooldownStartTime()) / 1000;
+        return (int) (tracker.getResetAt() - System.currentTimeMillis()) / 1000;
     }
 
 

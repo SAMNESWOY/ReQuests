@@ -1,63 +1,82 @@
 package ru.winxboyz.requests.listeners;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
-import org.bukkit.block.BlockState;
+import org.bukkit.block.Block;
 import org.bukkit.block.Furnace;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.FurnaceSmeltEvent;
-import org.bukkit.event.inventory.InventoryInteractEvent;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.InventoryAction;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import ru.winxboyz.requests.managers.InventoryManager;
 import ru.winxboyz.requests.managers.QuestManager;
 
 public class ItemSmeltListener implements Listener {
 
-    private QuestManager manager;
+    private final QuestManager      questManager;
+    private final InventoryManager  inventoryManager;
 
-    private final Map<UUID,List<Inventory>> furnaces = new HashMap<>();
 
-    public void ItemFurnacePutListener(InventoryInteractEvent event) {
-        InventoryType type = event.getInventory().getType();
-        if(!List.of(InventoryType.BLAST_FURNACE, InventoryType.FURNACE, InventoryType.SMOKER).contains(type))
+    @EventHandler
+    public void ItemFurnacePutListener(InventoryClickEvent event) {
+        Inventory clickedInventory = event.getClickedInventory();
+
+        if(clickedInventory == null)
             return;
+
         Player player = (Player) event.getWhoClicked();
-        if(furnaces.get(player.getUniqueId()) == null)
-            furnaces.put(player.getUniqueId(), new ArrayList<>());
-        else
-            furnaces.get(player.getUniqueId()).add(event.getInventory());
+
+        if(event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
+            inventoryManager.handleShiftClick(
+                player,
+                event.getCurrentItem()
+            );
+            return;
+        }
+        if(event.getClick() != ClickType.LEFT && event.getClick() != ClickType.RIGHT)
+            return;
+
+        Inventory inventory = ((Player) event.getWhoClicked()).getOpenInventory().getTopInventory();
+        if(inventory != clickedInventory)
+            return;
+
+        Block block = inventory.getLocation().getBlock();
+        
+        inventoryManager.handleClick(block, player, event.getSlot(), event.getCursor(), event.getCurrentItem());
     }
 
     @EventHandler
     public void onItemSmelt(FurnaceSmeltEvent event) {
         ItemStack result = event.getResult();
-        BlockState state = event.getBlock().getState();
-        if(!(state instanceof Furnace furnace))
+        Block block = event.getBlock();
+        if(!(block.getState() instanceof Furnace))
             return;
-        try {
-            List<Inventory> inventories = furnaces.values().stream()
-            .filter(fl -> fl.contains(furnace.getInventory())).findFirst().get();
+        // if(!inventoryManager.hasIssuer(block)) return;
 
-            UUID playerUUID = furnaces.keySet().stream().filter(p -> furnaces.get(p) == inventories).findFirst().get();
-            
-            manager.trackSmelt(Bukkit.getPlayer(playerUUID), result);
-        } catch(NoSuchElementException e) {
+        UUID playerUUID = inventoryManager.getIssuer(block);
+        if(playerUUID == null)
             return;
-        }
+        Player player = Bukkit.getPlayer(playerUUID);
+
+        if(player == null)
+            return;
+
+        questManager.trackSmelt(player, result);
+
+        if(event.getSource().getAmount() == 1)
+            inventoryManager.removeIssuer(block, playerUUID);
     }
 
-    public ItemSmeltListener(QuestManager manager) {
-        this.manager = manager;
+    public ItemSmeltListener(QuestManager questManager, InventoryManager inventoryManager) {
+        this.questManager = questManager;
+        this.inventoryManager = inventoryManager;
     }
 
 }
