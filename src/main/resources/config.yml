@@ -1,19 +1,25 @@
 quests:
-  - name: "sakura"
+  sakura:
     display-name: "Цветение вишни"
     description: "Принесите мне 10 вишневых саженцев"
     npc: "npc_sakura"
     duration: 14400000
     cooldown: 86400000
     objectives:
-      - type: "GIVE"
+      0:
+        type: "GIVE"
         target: "minecraft:cherry_sapling"
         amount: 10
     rewards:
-      - money: 1000
-        experience: 100
-        items: []
+      0:
+        type: "MONEY"
+        amount: 1000
+      1:
+        type: "EXP"
+        amount: 100
 locale: en
 locales:
   ru:
+    syntax-error: "Ошибка в команде:"
   en:
+    syntax-error: "Command error:"

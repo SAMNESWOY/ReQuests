@@ -4,13 +4,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 import ru.winxboyz.requests.utils.Tracker;
 
 public class RemoveExpired {
 
-    private final ConcurrentHashMap<UUID,List<Tracker>> progress;
+    private final Map<UUID,List<Tracker>> progress;
 
     public void tick() {
         if(progress.isEmpty()) return;
@@ -31,7 +30,7 @@ public class RemoveExpired {
         }
     }
 
-    public RemoveExpired(ConcurrentHashMap<UUID,List<Tracker>> progress) {
+    public RemoveExpired(Map<UUID,List<Tracker>> progress) {
         this.progress = progress;
     }
 }
