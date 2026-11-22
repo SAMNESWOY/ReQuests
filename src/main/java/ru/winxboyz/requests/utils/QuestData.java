@@ -91,6 +91,19 @@ public class QuestData {
         return List.copyOf(rewards);
     }
 
+    public static Component objectiveComponent(QuestObjective objective) {
+        StringBuilder objectiveText = new StringBuilder().append("- ");
+        switch(objective.getType()) {
+            case ObjectiveType.GIVE  -> objectiveText.append("Принести ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+            case ObjectiveType.KILL  -> objectiveText.append("Убить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+            case ObjectiveType.CRAFT -> objectiveText.append("Создать ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+            case ObjectiveType.SMELT -> objectiveText.append("Переплавить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+            case ObjectiveType.BREW  -> objectiveText.append("Приготовить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+        }
+        String objectiveString = objectiveText.toString();
+        return Component.text(objectiveString);
+    }
+
     public QuestData(
         String name, String displayName, String description, String npc,
         List<QuestObjective> objectives, List<QuestReward> rewards,
@@ -121,15 +134,7 @@ public class QuestData {
         pages.set(pages.size()-1,pages.getLast().append(Component.text("\n\nЦель:\n").decorate(TextDecoration.BOLD)));
 
         for(QuestObjective objective : objectives) {
-            StringBuilder objectiveText = new StringBuilder().append("- ");
-            switch(objective.getType()) {
-                case ObjectiveType.GIVE  -> objectiveText.append("Принести ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
-                case ObjectiveType.KILL  -> objectiveText.append("Убить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
-                case ObjectiveType.CRAFT -> objectiveText.append("Создать ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
-                case ObjectiveType.SMELT -> objectiveText.append("Переплавить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
-                case ObjectiveType.BREW  -> objectiveText.append("Приготовить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
-            }
-            pages.set(pages.size()-1,pages.getLast().append(Component.text(objectiveText.toString())));
+            pages.set(pages.size()-1,pages.getLast().append(objectiveComponent(objective)));
         }
         
         if(((TextComponent)pages.getLast()).content().length() >= 100)

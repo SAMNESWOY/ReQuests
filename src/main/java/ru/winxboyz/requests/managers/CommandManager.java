@@ -56,7 +56,7 @@ public class CommandManager {
     public void handleList(CommandSender sender) {
         Component message = Component.text("Команды: ");
         for(QuestData q : quests())
-            message.append(Component.text("\n" + q.getDisplayName() + " (" + q.getName() + ")"));
+            message = message.append(Component.text("\n" + q.getDisplayName() + " (" + q.getName() + ")"));
         sender.sendMessage(message);
     }
 

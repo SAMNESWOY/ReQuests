@@ -13,10 +13,12 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.milkbowl.vault.economy.Economy;
+import ru.winxboyz.requests.commands.JournalCommand;
 import ru.winxboyz.requests.commands.ReQuestsCommand;
 import ru.winxboyz.requests.listeners.FurnaceBreakListener;
 import ru.winxboyz.requests.listeners.ItemCraftListener;
 import ru.winxboyz.requests.listeners.ItemSmeltListener;
+import ru.winxboyz.requests.listeners.JournalClickListener;
 import ru.winxboyz.requests.listeners.NpcInteractListener;
 import ru.winxboyz.requests.listeners.PlayerListener;
 import ru.winxboyz.requests.managers.ConfigManager;
@@ -100,13 +102,15 @@ public class ReQuests extends JavaPlugin {
         messages = configManager.getMessages();
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             commands.registrar().register(new ReQuestsCommand(this).initialize());
+            commands.registrar().register(new JournalCommand(pluginManager.getQuestManager()).initialize());
         });
         getServer().getPluginManager().registerEvents(new NpcInteractListener(pluginManager.getQuestManager()), this);
         getServer().getPluginManager().registerEvents(new ItemCraftListener(pluginManager.getQuestManager()), this);
         getServer().getPluginManager().registerEvents(new ItemSmeltListener(pluginManager.getQuestManager(),pluginManager.getInventoryManager()), this);
         getServer().getPluginManager().registerEvents(new FurnaceBreakListener(pluginManager.getInventoryManager()), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(pluginManager.getQuestManager()), this);
-
+        getServer().getPluginManager().registerEvents(new JournalClickListener(), this);
+        
         
         RemoveExpired removeExpired = new RemoveExpired(progress);
 

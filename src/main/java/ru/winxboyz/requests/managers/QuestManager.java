@@ -6,15 +6,21 @@ import java.util.List;
 import java.util.UUID;
 import java.util.HashMap;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import ru.winxboyz.requests.ReQuests;
+import ru.winxboyz.requests.utils.JournalHolder;
 import ru.winxboyz.requests.utils.ObjectiveType;
+import ru.winxboyz.requests.utils.PageSwitcher;
 import ru.winxboyz.requests.utils.QuestData;
 import ru.winxboyz.requests.utils.QuestObjective;
 import ru.winxboyz.requests.utils.QuestReward;
@@ -192,6 +198,54 @@ public class QuestManager {
                 }
             }
         }
+    }
+
+    public void handleJournal(Player player) {
+        if(player == null)
+            return;
+        List<Tracker> trackers = progress.get(player.getUniqueId()).stream()
+        .filter(t -> !t.isOnCooldown()).toList();
+        if(trackers.size() == 0) {
+            player.sendActionBar(Component.text("Нет активных квестов").color(NamedTextColor.RED));
+            return;
+        }
+        List<Inventory> questList = new ArrayList<>();
+        int totalPages = trackers.size() / 18 + 1;
+        JournalHolder journal = new JournalHolder();
+        for(int i = 0; i < totalPages; i++) {
+            questList.add(Bukkit.createInventory(journal, 27, Component.text("Квесты (" + (i+1) + "/" + totalPages + ")")));
+            for(int j = 0; j < 18; j++) {
+                int index = j + i*18;
+                if(index >= trackers.size())
+                    break;
+                Tracker t = trackers.get(index);
+                QuestData quest = t.getQuest();
+                int[] questProgress = t.getProgress();
+                
+                ItemStack q = new ItemStack(Material.PAPER);
+                ItemMeta meta = q.getItemMeta();
+                meta.displayName(Component.text(quest.getDisplayName()).color(NamedTextColor.DARK_AQUA).decorate(TextDecoration.ITALIC));
+                
+                List<Component> lore = new ArrayList<>();
+                for(int k = 0; k < questProgress.length; k++) {
+                    QuestObjective objective = quest.getObjectives().get(k);
+                    lore.add(QuestData.objectiveComponent(objective));
+                    lore.set(lore.size()-1, lore.get(lore.size()-1).append(
+                        Component.text(": " + questProgress[k] + "/" + objective.getAmount()).color(NamedTextColor.GOLD)
+                    ));
+                }
+
+                meta.lore(lore);
+                q.setItemMeta(meta);
+                questList.getLast().setItem(j, q);
+            }
+            if(i > 0)
+                questList.getLast().setItem(18, new PageSwitcher(false));
+            if(i < totalPages - 1)
+                questList.getLast().setItem(26, new PageSwitcher(true));
+        }
+
+        player.openInventory(questList.getFirst());
     }
 
     public void checkCompletion(Player player, Tracker tracker) {
