@@ -59,6 +59,11 @@ public class QuestManager {
         return quests().stream().filter(q -> q.getNpc().equals(npcId) || q.getNpc().equals(npcName)).findFirst().orElse(null);
     }
 
+    public void takeQuest(Player player, QuestData quest) {
+        if(hasQuests(player) && !hasQuest(player, quest))
+            progress.get(player.getUniqueId()).add(new Tracker(quest, System.currentTimeMillis()));
+    }
+
     /**
      * Квест по NPC: ищем и по внутреннему id, и по имени.
      *
@@ -122,15 +127,19 @@ public class QuestManager {
         return tracker.getQuest().getObjectives().indexOf(objective);
     }
 
-    public ItemStack getItems(String npcId, String npcName, ObjectiveType type) {
+    public List<ItemStack> getItems(String npcId, String npcName, ObjectiveType type) {
         if(
             type == ObjectiveType.KILL ||
             !isNpcQuestGiver(npcId, npcName)) return null;
         QuestData quest = getQuest(npcId, npcName);
         if(quest == null) return null;
-        QuestObjective objective = quest.getObjectives().stream().filter(obj -> obj.getType() == type).findFirst().orElse(null);
-        if(objective == null) return null;
-        return new ItemStack(Material.matchMaterial(objective.getTarget()), objective.getAmount());
+        List<QuestObjective> objectives = quest.queryObjectives(type);
+        if(objectives == null || objectives.size() == 0) return null;
+        List<ItemStack> items = new ArrayList<>();
+        for(QuestObjective objective : objectives) {
+            items.add(Material.matchMaterial(objective.getTarget()), objective.getAmount());
+        }
+        return items;
     }
 
     public void trackCraft(Player player, ItemStack items) {
@@ -169,30 +178,35 @@ public class QuestManager {
         }
     }
 
-    public void trackGive(Player player, ItemStack items, String npcName, String npcId) {
+    public void trackGive(Player player, String npcName, String npcId) {
         if(!hasQuests(player)) return;
         if(!hasQuestFrom(player, npcId, npcName)) return;
         Tracker tracker = progress.get(player.getUniqueId()).stream().filter(tr -> tr.getQuest() == getQuest(npcId, npcName)).findFirst().get();
         if(tracker.isOnCooldown()) return;
-        QuestObjective objective = tracker.getQuest().queryObjectives(ObjectiveType.GIVE, items.getType().getKey().asString()).get(0);
-        // if(objectives.size() == 0) return;
-
+        List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.GIVE);
+        if(objectives.size() == 0) return;
         int[] tracks = tracker.getProgress();
-        int index = objectiveIndex(tracker, objective);
-        if(objective.getAmount() <= tracks[index]) return;
+        // List<ItemStack> items = getItems(npcId, npcName, ObjectiveType.GIVE);
+        // if(items == null || items.size() == 0) return;
+        for(QuestObjective objective : objectives) {
+            // if(!items.getType().getKey().asString().equals(objective.getTarget()))
+            //     continue;
+            int index = objectiveIndex(tracker, objective);
+            if(objective.getAmount() <= tracks[index]) continue;
 
-        ItemStack[] inventory = player.getInventory().getContents();
-        for(ItemStack item : inventory) {
-            if(item != null && item.getType() == items.getType()) {
-                int amount = item.getAmount();
-                if(amount + tracks[index] >= objective.getAmount()) {
-                    item.setAmount(amount + tracks[index] - objective.getAmount());
-                    tracks[index] = objective.getAmount();
-                    checkCompletion(player, tracker);
-                    break;
+            ItemStack[] inventory = player.getInventory().getContents();
+            for(ItemStack item : inventory) {
+                if(item != null && item.getType().getKey().asString().equals(objective.getTarget())) {
+                    int amount = item.getAmount();
+                    if(amount + tracks[index] >= objective.getAmount()) {
+                        item.setAmount(amount + tracks[index] - objective.getAmount());
+                        tracks[index] = objective.getAmount();
+                        checkCompletion(player, tracker);
+                        break;
+                    }
+                    item.setAmount(0);
+                    tracks[index] += amount;
                 }
-                item.setAmount(0);
-                tracks[index] += amount;
             }
         }
     }

@@ -2,6 +2,9 @@ package ru.winxboyz.requests.utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
+
+import java.time.Duration;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -13,6 +16,7 @@ import org.bukkit.inventory.meta.BookMeta;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventire.text.event.ClickCallback;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
@@ -126,7 +130,9 @@ public class QuestData {
     public QuestData(
         String name, String displayName, String description, String npc,
         List<QuestObjective> objectives, List<QuestReward> rewards,
-        long duration, long cooldown) {
+        long duration, long cooldown,
+        BiConsumer<Player,QuestData> callback
+    ) {
         
         if(cooldown < duration) throw new IllegalArgumentException("Cooldown cannot be less than duration");
         
@@ -142,11 +148,11 @@ public class QuestData {
         List<Component> pages = new ArrayList<>(1);
 
         int i = 0, symbolsPerPage = 150;
-        Component component = Component.text(this.displayName+"\n\n");
+        Component component = Component.text("").append(this.displayName+"\n\n").color(NamedTextColor.DARK_AQUA).decorate(TextDecoration.BOLD);
         do {
             int endIndex = Math.min((i+1)*symbolsPerPage, description.length());
             String pageText = description.substring(i*symbolsPerPage, endIndex);
-            Component appendum = Component.text(pageText).color(NamedTextColor.BLACK);
+            Component appendum = Component.text(pageText);
             pages.add(component.append(appendum));
             component = Component.text("");
         } while(i++ < description.length() / symbolsPerPage);
@@ -178,17 +184,30 @@ public class QuestData {
             }
             pages.set(pages.size()-1,pages.getLast().append(Component.text(rewardText.toString())));
         }
-        pages.set(pages.size()-1,pages.getLast().append(Component.text("Принять\n").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD)
-        .clickEvent(ClickEvent.callback(audience -> {
-            if(audience instanceof Player player) {
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "requests " + player.getName() + " " + name + " accept");
-            }
-        }))).append(Component.text("Отклонить\n").color(NamedTextColor.RED).decorate(TextDecoration.BOLD)
-        .clickEvent(ClickEvent.callback(audience -> {
-            if(audience instanceof Player player) {
-                player.closeInventory();
-            }
-        }))));
+        pages.set(pages.size()-1,pages.getLast()
+        .append(Component.text("Принять\n").color(NamedTextColor.GREEN).decorate(TextDecoration.BOLD)
+        .clickEvent(
+            ClickEvent.callback(audience -> {
+                if(audience instanceof Player player) {
+                    callback.accept(player,this);
+                    player.closeInventory();
+                }
+            }),
+            ClickCallback.Options.builder()
+                .uses(ClickCallback.UNLIMITED_USES)
+                .lifetime(Duration.ZERO)
+        ))
+        .append(Component.text("Отклонить\n").color(NamedTextColor.RED).decorate(TextDecoration.BOLD)
+        .clickEvent(
+            ClickEvent.callback(audience -> {
+                if(audience instanceof Player player) {
+                    player.closeInventory();
+                }
+            }),
+            ClickCallback.Options.builder()
+                .uses(ClickCallback.UNLIMITED_USES)
+                .lifetime(Duration.ZERO)
+        )));
 
         BookMeta meta = (BookMeta) book.getItemMeta();
 

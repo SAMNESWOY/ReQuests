@@ -45,7 +45,7 @@ public class NpcInteractListener implements Listener {
         if(
             questManager.hasObjective(quest, ObjectiveType.GIVE) &&
             questManager.hasQuestFrom(player, npcName, npcId)) {
-                questManager.trackGive(player, player.getActiveItem(), npcName, npcId);
+                questManager.trackGive(player, npcName, npcId);
         } else if(!questManager.hasQuestFrom(player, npcName, npcId))
             questManager.openQuest(player, npcName, npcId);
         else

@@ -28,9 +28,9 @@ public class PluginManager {
 
     public void initialize(ReQuests plugin) {
         commandManager = new CommandManager(plugin);
-        configManager = new ConfigManager(plugin);
         questManager = new QuestManager(plugin);
         inventoryManager = new InventoryManager(plugin);
+        configManager = new ConfigManager(plugin);
         // dbManager = new DatabaseManager(plugin);
     }
 }

@@ -58,6 +58,10 @@ public class ReQuests extends JavaPlugin {
         return messages;
     }
 
+    public PluginManager getManagers() {
+        return pluginManager;
+    }
+
     public void reload() {
         reloadConfig();
         progress.clear();
@@ -101,7 +105,7 @@ public class ReQuests extends JavaPlugin {
         quests = configManager.getQuests();
         messages = configManager.getMessages();
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
-            commands.registrar().register(new ReQuestsCommand(this).initialize());
+            // commands.registrar().register(new ReQuestsCommand(this).initialize());
             commands.registrar().register(new JournalCommand(pluginManager.getQuestManager()).initialize());
         });
         getServer().getPluginManager().registerEvents(new NpcInteractListener(pluginManager.getQuestManager()), this);

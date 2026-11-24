@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -52,7 +53,7 @@ public class ConfigManager {
         //     plugin.getLogger().severe("No SQL connection credentials specified");
         //     return;
         // }
-
+        BiConsumer<Player,QuestData> takeQuest = plugin.getManagers().getQuestManager()::takeQuest;
         if(questsSection == null) {
             plugin.getLogger().warning("No quests specified in config, creating default quests");
             quests.add(
@@ -61,7 +62,8 @@ public class ConfigManager {
                     List.of(new QuestObjective(ObjectiveType.GIVE, "minecraft:cherry_sapling", 10)),
                     List.of(new QuestReward(RewardType.MONEY, 1000)),
                     4 * 60 * 60 * 1000L,
-                    24 * 60 * 60 * 1000L
+                    24 * 60 * 60 * 1000L,
+                    takeQuest
                 )
             );
             for(QuestData quest : quests) {
@@ -120,7 +122,7 @@ public class ConfigManager {
                             return new QuestReward(RewardType.valueOf(type.trim().toUpperCase()), identifier, amount);
                         }).toList();
 
-                    quests.add(new QuestData(key, displayName, description, npc, objectives, rewards, duration, cooldown));
+                    quests.add(new QuestData(key, displayName, description, npc, objectives, rewards, duration, cooldown, takeQuest));
                 } catch(Exception e) {
                     plugin.getLogger().warning("Failed to load quest '" + key + "': " + e.getMessage());
                 }
