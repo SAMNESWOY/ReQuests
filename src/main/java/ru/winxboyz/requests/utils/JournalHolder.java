@@ -37,14 +37,19 @@ public class JournalHolder implements InventoryHolder {
             page--;
     }
 
+    public void addInventory(Inventory inventory) {
+        if(inventory != null)
+            inventories.add(inventory);
+    }
+
 
     @Override
     public @NotNull Inventory getInventory() {
-        return inventories.get(0);
+        return inventories.get(page-1);
     }
 
     public Inventory getInventory(int page) {
-        if(page < 0 || page >= inventories.size())
+        if(page < 1 || page > inventories.size())
             return null;
         return inventories.get(page-1);
     }

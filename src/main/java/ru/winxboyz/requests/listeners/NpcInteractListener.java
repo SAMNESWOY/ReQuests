@@ -30,14 +30,14 @@ public class NpcInteractListener implements Listener {
         
 
 
-        if(!questManager.isNpcQuestGiver(npcName, npcId) && !questManager.isNpcQuestGiver(npcName, npcId)) return;
+        if(!questManager.isNpcQuestGiver(npcName, npcId)) return;
         QuestData quest = questManager.getQuest(npcName, npcId);
         if(quest == null)
             quest = questManager.getQuest(npcName, npcId);
         
         Player player = event.getPlayer();
         if(questManager.isOnCooldown(player, quest)) {
-            player.sendMessage(
+            player.sendActionBar(
                 Component.text("Квест станет доступен через ").color(NamedTextColor.RED)
                 .append(Component.text(TimeMessage.toString(questManager.getCooldown(player, quest), "ru")).color(NamedTextColor.AQUA)));
             return;
@@ -45,9 +45,11 @@ public class NpcInteractListener implements Listener {
         if(
             questManager.hasObjective(quest, ObjectiveType.GIVE) &&
             questManager.hasQuestFrom(player, npcName, npcId)) {
-                questManager.trackGive(player, questManager.getItems(npcName, npcId, ObjectiveType.GIVE));
+                questManager.trackGive(player, player.getActiveItem(), npcName, npcId);
         } else if(!questManager.hasQuestFrom(player, npcName, npcId))
             questManager.openQuest(player, npcName, npcId);
+        else
+            player.sendActionBar(Component.text("Квест уже взят").color(NamedTextColor.RED));
     }
 
     public NpcInteractListener(QuestManager npcManager) {

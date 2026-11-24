@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
@@ -50,6 +51,23 @@ public class QuestData {
         return npc;
     }
 
+    // public static Material getMaterial(String identifier) {
+    //     return Material.matchMaterial(identifier);
+    // }
+
+    // public static Component fromMaterial(Material material) {
+    //     if(material == null)
+    //         return Component.text("");
+    //     return Component.translatable(material);
+    // }
+
+    public static Component fromKey(String key, ObjectiveType type) {
+        String replacedKey = key.replace(":", ".");
+        if(ObjectiveType.KILL == type) 
+            return Component.translatable("entity." + replacedKey);
+        return Component.translatable("item." + replacedKey);
+    }
+
     public List<QuestObjective> getObjectives() {
         return List.copyOf(objectives);
     }
@@ -92,16 +110,17 @@ public class QuestData {
     }
 
     public static Component objectiveComponent(QuestObjective objective) {
+        Component type = fromKey(objective.getTarget(), objective.getType());
         StringBuilder objectiveText = new StringBuilder().append("- ");
         switch(objective.getType()) {
-            case ObjectiveType.GIVE  -> objectiveText.append("Принести ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
-            case ObjectiveType.KILL  -> objectiveText.append("Убить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
-            case ObjectiveType.CRAFT -> objectiveText.append("Создать ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
-            case ObjectiveType.SMELT -> objectiveText.append("Переплавить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
-            case ObjectiveType.BREW  -> objectiveText.append("Приготовить ").append(objective.getAmount()).append(" ").append(objective.getTarget()).append("\n");
+            case ObjectiveType.GIVE  -> objectiveText.append("Принести ").append(objective.getAmount()).append(" ");
+            case ObjectiveType.KILL  -> objectiveText.append("Убить ").append(objective.getAmount()).append(" ");
+            case ObjectiveType.CRAFT -> objectiveText.append("Создать ").append(objective.getAmount()).append(" ");
+            case ObjectiveType.SMELT -> objectiveText.append("Переплавить ").append(objective.getAmount()).append(" ");
+            case ObjectiveType.BREW  -> objectiveText.append("Приготовить ").append(objective.getAmount()).append(" ");
         }
         String objectiveString = objectiveText.toString();
-        return Component.text(objectiveString);
+        return Component.text(objectiveString).append(type).append(Component.text("\n"));
     }
 
     public QuestData(
@@ -122,14 +141,17 @@ public class QuestData {
 
         List<Component> pages = new ArrayList<>(1);
 
-        int i = 0;
+        int i = 0, symbolsPerPage = 150;
+        Component component = Component.text(this.displayName+"\n\n");
         do {
-            int endIndex = Math.min((i+1)*1000, description.length());
-            String pageText = description.substring(i*1000, endIndex);
-            pages.add(Component.text(pageText));
-        } while(i++ < description.length() / 1000);
+            int endIndex = Math.min((i+1)*symbolsPerPage, description.length());
+            String pageText = description.substring(i*symbolsPerPage, endIndex);
+            Component appendum = Component.text(pageText).color(NamedTextColor.BLACK);
+            pages.add(component.append(appendum));
+            component = Component.text("");
+        } while(i++ < description.length() / symbolsPerPage);
 
-        if(((TextComponent)pages.getLast()).content().length() >= 100)
+        if(((TextComponent)pages.getLast()).content().length() * 3 >= symbolsPerPage)
             pages.add(Component.text(""));
         pages.set(pages.size()-1,pages.getLast().append(Component.text("\n\nЦель:\n").decorate(TextDecoration.BOLD)));
 
@@ -137,7 +159,8 @@ public class QuestData {
             pages.set(pages.size()-1,pages.getLast().append(objectiveComponent(objective)));
         }
         
-        if(((TextComponent)pages.getLast()).content().length() >= 100)
+        if(((TextComponent)pages.getLast()).content().length() * 3 >= symbolsPerPage)
+            pages.add(Component.text(""));
         pages.set(pages.size()-1,pages.getLast().append(Component.text("\nНаграда:\n").decorate(TextDecoration.BOLD)));
         for(QuestReward reward : rewards) {
             StringBuilder rewardText = new StringBuilder().append("- ");

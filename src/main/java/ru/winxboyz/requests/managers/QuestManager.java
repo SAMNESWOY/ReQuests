@@ -20,7 +20,6 @@ import net.kyori.adventure.text.format.TextDecoration;
 import ru.winxboyz.requests.ReQuests;
 import ru.winxboyz.requests.utils.JournalHolder;
 import ru.winxboyz.requests.utils.ObjectiveType;
-import ru.winxboyz.requests.utils.PageSwitcher;
 import ru.winxboyz.requests.utils.QuestData;
 import ru.winxboyz.requests.utils.QuestObjective;
 import ru.winxboyz.requests.utils.QuestReward;
@@ -170,32 +169,30 @@ public class QuestManager {
         }
     }
 
-    public void trackGive(Player player, ItemStack items) {
+    public void trackGive(Player player, ItemStack items, String npcName, String npcId) {
         if(!hasQuests(player)) return;
-        for(Tracker tracker : progress.get(player.getUniqueId())) {
-            if(tracker.isOnCooldown()) continue;
-            List<QuestObjective> objectives = tracker.getQuest().queryObjectives(ObjectiveType.GIVE, items.getType().getKey().toString());
-            if(objectives.size() == 0) continue;
+        if(!hasQuestFrom(player, npcId, npcName)) return;
+        Tracker tracker = progress.get(player.getUniqueId()).stream().filter(tr -> tr.getQuest() == getQuest(npcId, npcName)).findFirst().get();
+        if(tracker.isOnCooldown()) return;
+        QuestObjective objective = tracker.getQuest().queryObjectives(ObjectiveType.GIVE, items.getType().getKey().asString()).get(0);
+        // if(objectives.size() == 0) return;
 
-            int[] tracks = tracker.getProgress();
-            for(QuestObjective objective : objectives) {
-                int index = objectiveIndex(tracker, objective);
-                if(objective.getAmount() <= tracks[index]) continue;
+        int[] tracks = tracker.getProgress();
+        int index = objectiveIndex(tracker, objective);
+        if(objective.getAmount() <= tracks[index]) return;
 
-                ItemStack[] inventory = player.getInventory().getContents();
-                for(ItemStack item : inventory) {
-                    if(item != null && item.getType() == items.getType()) {
-                        int amount = item.getAmount();
-                        if(amount + tracks[index] >= objective.getAmount()) {
-                            item.setAmount(amount + tracks[index] - objective.getAmount());
-                            tracks[index] = objective.getAmount();
-                            checkCompletion(player, tracker);
-                            break;
-                        }
-                        item.setAmount(0);
-                        tracks[index] += amount;
-                    }
+        ItemStack[] inventory = player.getInventory().getContents();
+        for(ItemStack item : inventory) {
+            if(item != null && item.getType() == items.getType()) {
+                int amount = item.getAmount();
+                if(amount + tracks[index] >= objective.getAmount()) {
+                    item.setAmount(amount + tracks[index] - objective.getAmount());
+                    tracks[index] = objective.getAmount();
+                    checkCompletion(player, tracker);
+                    break;
                 }
+                item.setAmount(0);
+                tracks[index] += amount;
             }
         }
     }
@@ -209,13 +206,15 @@ public class QuestManager {
             player.sendActionBar(Component.text("Нет активных квестов").color(NamedTextColor.RED));
             return;
         }
-        List<Inventory> questList = new ArrayList<>();
-        int totalPages = trackers.size() / 18 + 1;
+        // List<Inventory> questList = new ArrayList<>();
+        int
+            totalMissionsPerPage = 1,
+            totalPages = trackers.size() / totalMissionsPerPage + 1;
         JournalHolder journal = new JournalHolder();
         for(int i = 0; i < totalPages; i++) {
-            questList.add(Bukkit.createInventory(journal, 27, Component.text("Квесты (" + (i+1) + "/" + totalPages + ")")));
-            for(int j = 0; j < 18; j++) {
-                int index = j + i*18;
+            Inventory page = Bukkit.createInventory(journal, 27, Component.text("Квесты (" + (i+1) + "/" + totalPages + ")"));
+            for(int j = 0; j < totalMissionsPerPage; j++) {
+                int index = j + i*totalMissionsPerPage;
                 if(index >= trackers.size())
                     break;
                 Tracker t = trackers.get(index);
@@ -237,15 +236,16 @@ public class QuestManager {
 
                 meta.lore(lore);
                 q.setItemMeta(meta);
-                questList.getLast().setItem(j, q);
+                page.setItem(j, q);
             }
             if(i > 0)
-                questList.getLast().setItem(18, new PageSwitcher(false));
+                page.setItem(18, new ItemStack(Material.ARROW));
             if(i < totalPages - 1)
-                questList.getLast().setItem(26, new PageSwitcher(true));
+                page.setItem(26, new ItemStack(Material.ARROW));
+            journal.addInventory(page);
         }
-
-        player.openInventory(questList.getFirst());
+        journal.setPage(1);
+        player.openInventory(journal.getInventory());
     }
 
     public void checkCompletion(Player player, Tracker tracker) {
